@@ -159,38 +159,45 @@ public class MainActivity extends AppCompatActivity {
 
         output.setText(""); // Clear output
 
-        // Set up Iodine client
-        log(R.string.log_starting_iodine);
-
-        Set<IodineArgument> args = new HashSet<>();
-        args.add(new IodineArgument(IodineFlags.LAZY_MODE, "1"));
-        if (iodineUsePassword) {
-            args.add(new IodineArgument(IodineFlags.AUTHENTICATION_PASSWORD, iodinePassword));
-        }
+        Process iodineProcess = null;
+        Session sshSession = null;
 
         try {
+            // Set up Iodine client
+            log(R.string.log_starting_iodine);
+
+            Set<IodineArgument> args = new HashSet<>();
+            args.add(new IodineArgument(IodineFlags.LAZY_MODE, "1"));
+            if (iodineUsePassword) {
+                args.add(new IodineArgument(IodineFlags.AUTHENTICATION_PASSWORD, iodinePassword));
+            }
+
             IodineClient iodineClient = new IodineClient(args, iodineIp, this);
-            Process iodineProcess = iodineClient.start();
+            iodineProcess = iodineClient.start();
             startLog(iodineProcess.getInputStream());
-        } catch (IOException e) {
-            log(e.getMessage());
-        }
 
-        // Set up SSH tunnel
-        try {
-            JSch jsch = new JSch();
-            Session session = jsch.getSession(sshIp);
-            session.setPort(sshPort);
+            // Set up SSH tunnel
+            sshSession = new JSch().getSession(sshIp);
+            sshSession.setPort(sshPort);
 
             if (sshUseCompression) {
-                session.setConfig("compression.s2c", "zlib@openssh.com,zlib,none");
-                session.setConfig("compression.c2s", "zlib@openssh.com,zlib,none");
-                session.setConfig("compression_level", "9");
+                sshSession.setConfig("compression.s2c", "zlib@openssh.com,zlib,none");
+                sshSession.setConfig("compression.c2s", "zlib@openssh.com,zlib,none");
+                sshSession.setConfig("compression_level", "9");
             }
-        } catch (JSchException e) {
+
+            // Set up SOCKS proxy
+
+        } catch (IOException|JSchException e) {
             log(e.getMessage());
+        } finally {
+            if (iodineProcess != null) {
+                iodineProcess.destroy();
+            }
+            if (sshSession != null && sshSession.isConnected()) {
+                sshSession.disconnect();
+            }
         }
 
-        // Set up SOCKS proxy
     }
 }
