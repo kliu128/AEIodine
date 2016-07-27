@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_key_iodine_ip">iodine_ip</string>
+    <string name="pref_key_iodine_use_password">iodine_use_password</string>
+    <string name="pref_key_iodine_password">iodine_password</string>
+    <string name="pref_key_ssh_ip">ssh_ip</string>
+    <string name="pref_key_ssh_port">ssh_port</string>
+    <string name="pref_key_ssh_use_compression">ssh_use_compression</string>
+    <string name="pref_key_displayed_set_settings_dialog_before">displayed_set_settings_dialog_before</string>
+</resources>

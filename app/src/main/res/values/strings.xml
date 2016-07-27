@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">AEIodine</string>
+    <string name="main_connect">Connect</string>
+    <string name="log_starting_iodine">Starting iodine…</string>
+
+    <string name="dialog_set_settings_message_1">Because this is the first time the app has been launched, you will need to set iodine server and SSH settings.</string>
+    <string name="dialog_set_settings_message_2">It looks like you haven\'t set all the preferences. Try again?</string>
+    <string name="dialog_set_settings_open_settings">Open Settings</string>
+
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <string name="pref_header_iodine">Iodine Configuration</string>
+    <string name="pref_title_iodine_ip">IP/Address of iodine nameserver</string>
+    <string name="pref_title_iodine_use_password">Use password</string>
+    <string name="pref_title_iodine_password">Password</string>
+
+    <string name="pref_header_ssh">SSH Configuration</string>
+    <string name="pref_title_ssh_ip">Internal IP address of SSH server</string>
+    <string name="pref_title_ssh_port">SSH port</string>
+    <string name="pref_title_ssh_use_compression">Use compression</string>
+    <string name="pref_summary_ssh_use_compression">Makes things faster!</string>
+
+    <string name="pref_ringtone_silent">Silent</string>
+</resources>
