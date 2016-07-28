@@ -1,129 +1,32 @@
 package space.potatofrom.aeiodine;
 
-import android.content.Context;
-import android.content.res.AssetManager;
-import android.os.Build;
+import android.content.Intent;
+import android.util.Log;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.security.Security;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+public class IodineClient {
+    public static final String TAG = "NATIVE";
 
-/**
- * Created by kevin on 7/25/16.
- */
-public final class IodineClient {
-    private final Context context;
-    private final String iodineCommand;
+    public static native int getDnsFd();
 
-    private static final String IODINE_ASSETS_DIR = "iodine";
-    private static final String IODINE_FILE_NAME = "iodine";
+    public static native int connect(String nameserv_addr, String topdomain, boolean raw_mode, boolean lazy_mode,
+                                     String password, int request_hostname_size, int response_fragment_size);
 
-    public IodineClient(
-            Set<IodineArgument> args,
-            String domain,
-            Context context) throws IOException {
-        this(args, "", domain, context);
-    }
+    public static native String getIp();
 
-    public IodineClient(
-            Set<IodineArgument> args,
-            String extraParameters,
-            String domain,
-            Context context) throws IOException {
-        this.context = context;
+    public static native String getRemoteIp();
 
-        // Build iodine command with arguments
-        String _iodineCommand = prepareCorrectIodineExecutable();
+    public static native int getNetbits();
 
-        for (IodineArgument arg : args) {
-            String flagValue = arg.getFlag().toString();
+    public static native int getMtu();
 
-            _iodineCommand += " " + flagValue;
-            if (arg.getValue() != null) {
-                _iodineCommand += " " + arg.getValue();
-            }
-        }
+    public static native int tunnel(int fd);
 
-        _iodineCommand += " " + extraParameters;
+    public static native void tunnelInterrupt();
 
-        _iodineCommand += " " + domain;
+    public static native String getPropertyNetDns1();
 
-        iodineCommand = _iodineCommand;
-    }
-
-    private void copyInputStreamToFile(InputStream in, File file) {
-        try {
-            OutputStream out = new FileOutputStream(file);
-            byte[] buf = new byte[1024];
-            int len;
-            while((len=in.read(buf)) > 0){
-                out.write(buf, 0, len);
-            }
-            out.close();
-            in.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Detect arch, prepare executable, and return the path to it
-     *
-     * @return The path to the iodine executable
-     */
-    private String prepareCorrectIodineExecutable() throws IOException {
-        String[] abis = Build.SUPPORTED_ABIS;
-        AssetManager assetMan = context.getAssets();
-        InputStream iodineInputStream = null;
-
-        for (String abi : abis) {
-            try {
-                iodineInputStream =
-                        assetMan.open(IODINE_ASSETS_DIR + "/" + abi + "/" + IODINE_FILE_NAME);
-                // Hey, it didn't fail!
-                break;
-            } catch (IOException e) {
-                continue;
-            }
-        }
-
-        if (iodineInputStream == null) {
-            throw new IOException("No iodine binary found for abis");
-        } else {
-            File cacheDir = context.getCodeCacheDir();
-
-            File iodineExecutable = new File(cacheDir, IODINE_FILE_NAME);
-            if (iodineExecutable.exists()) {
-                iodineExecutable.delete();
-            }
-
-            copyInputStreamToFile(iodineInputStream, iodineExecutable);
-            if (!iodineExecutable.setExecutable(true, false)) {
-                throw new SecurityException("Couldn't set iodine executable");
-            }
-            return iodineExecutable.getCanonicalPath();
-        }
-    }
-
-    public Process start() throws IOException {
-        ProcessBuilder pBuilder = new ProcessBuilder();
-        List<String> command = new ArrayList<>();
-
-        // Superuser this!
-        command.add("su");
-        command.add("-c");
-
-        command.add(iodineCommand);
-
-        return pBuilder
-                .command(command)
-                .redirectErrorStream(true)
-                .start();
+    static {
+        System.loadLibrary("iodine-client");
+        Log.d(TAG, "Native Library iodine-client loaded");
     }
 }

@@ -170,14 +170,7 @@ public class MainActivity extends AppCompatActivity {
             // Set up Iodine client
             log(R.string.log_starting_iodine);
 
-            Set<IodineArgument> args = new HashSet<>();
-            args.add(new IodineArgument(IodineFlags.LAZY_MODE, "1"));
-            if (iodineUsePassword) {
-                args.add(new IodineArgument(IodineFlags.AUTHENTICATION_PASSWORD, iodinePassword));
-            }
-
-            IodineClient iodineClient = new IodineClient(args, iodineExtraParams, iodineIp, this);
-            iodineProcess = iodineClient.start();
+            IodineClient.connect(iodineIp, "", false, true, iodineUsePassword ? iodinePassword : "", 200, 0);
             startLog(iodineProcess.getInputStream());
 
             // Set up SSH tunnel

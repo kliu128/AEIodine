@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 apply plugin: 'com.android.application'
 
 android {
@@ -17,13 +19,43 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    sourceSets.main {
+        jniLibs.srcDir 'app/src/main/libs' // use the jni .so compiled from the manual ndk-build command
+        jni.srcDirs = [] //disable automatic ndk-build call
+    }
+
+
+    //noinspection GroovyAssignabilityCheck
+    task ndkBuild(type: Exec) {
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+        def ndkDir = properties.getProperty('ndk.dir')
+
+        commandLine "$ndkDir/ndk-build",
+                'NDK_PROJECT_PATH=build',
+                'APP_BUILD_SCRIPT=src/main/jni/Android.mk',
+                'NDK_APPLICATION_MK=src/main/jni/Application.mk'
+    }
+
+    //noinspection GroovyAssignabilityCheck
+    task ndkLibsToJar(type: Zip, dependsOn: 'ndkBuild', description: 'Create a JAR of the native libs') {
+        destinationDir new File(buildDir, 'libs')
+        baseName 'ndk-libs'
+        extension 'jar'
+        from(new File(buildDir, 'libs')) { include '**/*.so' }
+        into 'lib/'
+    }
+
+    tasks.withType(JavaCompile) {
+        compileTask -> compileTask.dependsOn ndkLibsToJar
+    }
 }
 
-
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:24.1.1'
     compile 'com.jcraft:jsch:0.1.53'
     compile 'com.android.support:support-v4:24.1.1'
+    compile fileTree(dir: new File(buildDir, 'libs'), include: '*.jar')
 }
