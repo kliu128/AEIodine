@@ -9,6 +9,7 @@
 #include <jni.h>
 
 #include <sys/system_properties.h>
+#include <stdio.h>
 
 #include "iodine/src/common.h"
 #include "iodine/src/tun.h"

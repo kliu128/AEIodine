@@ -1,3 +1,0 @@
-[submodule "app/jni/iodine"]
-	path = app/src/main/jni/iodine
-	url = https://github.com/Pneumaticat/iodine
