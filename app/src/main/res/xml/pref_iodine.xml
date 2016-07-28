@@ -13,4 +13,9 @@
         android:title="@string/pref_title_iodine_password"
         android:dependency="@string/pref_key_iodine_use_password"
         android:inputType="textPassword" />
+    <EditTextPreference
+        android:key="@string/pref_key_iodine_extra_params"
+        android:title="@string/pref_title_iodine_extra_params"
+        android:inputType="textNoSuggestions"
+        android:defaultValue="" />
 </PreferenceScreen>

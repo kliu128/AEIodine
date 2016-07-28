@@ -3,6 +3,7 @@
     <string translatable="false" name="pref_key_iodine_ip">iodine_ip</string>
     <string translatable="false" name="pref_key_iodine_use_password">iodine_use_password</string>
     <string translatable="false" name="pref_key_iodine_password">iodine_password</string>
+    <string translatable="false" name="pref_key_iodine_extra_params">iodine_extra_params</string>
     <string translatable="false" name="pref_key_ssh_ip">ssh_ip</string>
     <string translatable="false" name="pref_key_ssh_port">ssh_port</string>
     <string translatable="false" name="pref_key_ssh_use_compression">ssh_use_compression</string>

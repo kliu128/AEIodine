@@ -148,10 +148,14 @@ public class MainActivity extends AppCompatActivity {
     public void connect(View view) {
         // Load up preferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
         String iodineIp = prefs.getString(getString(R.string.pref_key_iodine_ip), null);
         boolean iodineUsePassword =
                 prefs.getBoolean(getString(R.string.pref_key_iodine_use_password), false);
         String iodinePassword = prefs.getString(getString(R.string.pref_key_iodine_password), null);
+        String iodineExtraParams =
+                prefs.getString(getString(R.string.pref_key_iodine_extra_params), "");
+
         String sshIp = prefs.getString(getString(R.string.pref_key_ssh_ip), null);
         int sshPort = Integer.valueOf(prefs.getString(getString(R.string.pref_key_ssh_port), null));
         boolean sshUseCompression =
@@ -172,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
                 args.add(new IodineArgument(IodineFlags.AUTHENTICATION_PASSWORD, iodinePassword));
             }
 
-            IodineClient iodineClient = new IodineClient(args, iodineIp, this);
+            IodineClient iodineClient = new IodineClient(args, iodineExtraParams, iodineIp, this);
             iodineProcess = iodineClient.start();
             startLog(iodineProcess.getInputStream());
 
@@ -186,16 +190,17 @@ public class MainActivity extends AppCompatActivity {
                 sshSession.setConfig("compression_level", "9");
             }
 
-            // Set up SOCKS proxy
+            // TODO: Handle authentication
 
+            sshSession.connect();
         } catch (IOException|JSchException e) {
             log(e.getMessage());
         } finally {
-            if (iodineProcess != null) {
-                iodineProcess.destroy();
-            }
             if (sshSession != null && sshSession.isConnected()) {
                 sshSession.disconnect();
+            }
+            if (iodineProcess != null) {
+                iodineProcess.destroy();
             }
         }
 
