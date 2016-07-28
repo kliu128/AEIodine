@@ -18,10 +18,8 @@ import java.util.Set;
  * Created by kevin on 7/25/16.
  */
 public final class IodineClient {
-    private final Set<IodineArgument> args;
-    private final String domain;
     private final Context context;
-    private final String iodineExecutable;
+    private final String iodineCommand;
 
     private static final String IODINE_ASSETS_DIR = "iodine";
     private static final String IODINE_FILE_NAME = "iodine";
@@ -30,11 +28,33 @@ public final class IodineClient {
             Set<IodineArgument> args,
             String domain,
             Context context) throws IOException {
-        this.args = args;
-        this.domain = domain;
+        this(args, "", domain, context);
+    }
+
+    public IodineClient(
+            Set<IodineArgument> args,
+            String extraParameters,
+            String domain,
+            Context context) throws IOException {
         this.context = context;
 
-        iodineExecutable = prepareCorrectIodineExecutable();
+        // Build iodine command with arguments
+        String _iodineCommand = prepareCorrectIodineExecutable();
+
+        for (IodineArgument arg : args) {
+            String flagValue = arg.getFlag().toString();
+
+            _iodineCommand += " " + flagValue;
+            if (arg.getValue() != null) {
+                _iodineCommand += " " + arg.getValue();
+            }
+        }
+
+        _iodineCommand += " " + extraParameters;
+
+        _iodineCommand += " " + domain;
+
+        iodineCommand = _iodineCommand;
     }
 
     private void copyInputStreamToFile(InputStream in, File file) {
@@ -94,21 +114,10 @@ public final class IodineClient {
     public Process start() throws IOException {
         ProcessBuilder pBuilder = new ProcessBuilder();
         List<String> command = new ArrayList<>();
-        String iodineCommand = iodineExecutable;
 
+        // Superuser this!
         command.add("su");
         command.add("-c");
-
-        for (IodineArgument arg : args) {
-            String flagValue = arg.getFlag().toString();
-
-            iodineCommand += " " + flagValue;
-            if (arg.getValue() != null) {
-                iodineCommand += " " + arg.getValue();
-            }
-        }
-
-        iodineCommand += " " + domain;
 
         command.add(iodineCommand);
 
