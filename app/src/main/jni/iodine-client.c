@@ -127,8 +127,8 @@ int start_logger()
 
     /* create the pipe and redirect stdout and stderr */
     pipe(pfd);
-    dup2(pfd[1], 1);
-    dup2(pfd[1], 2);
+    dup2(pfd[1], STDOUT_FILENO);
+    dup2(pfd[1], STDERR_FILENO);
 
     /* spawn the logging thread */
     if(pthread_create(&thr, 0, thread_func, 0) == -1)
