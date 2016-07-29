@@ -66,7 +66,7 @@ public class DnsVpnService extends VpnService {
                 try {
                     SharedPreferences prefs =
                             PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-                    String tunnelNameserver = IodineClient.getPropertyNetDns1();
+                    String tunnelNameserver = "8.8.8.8";
                     String password =
                             prefs.getString(getString(R.string.pref_key_iodine_password), "");
                     String domain =
@@ -79,7 +79,7 @@ public class DnsVpnService extends VpnService {
                             true,
                             password,
                             200,
-                            200);
+                            3072);
 
                     switch (returnVal) {
                         case RETURN_SUCCESS:

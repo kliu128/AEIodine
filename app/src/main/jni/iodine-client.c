@@ -148,9 +148,12 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
 	const char *__p_nameserv_addr = (*env)->GetStringUTFChars(env,
 			j_nameserv_addr, NULL);
 	char *p_nameserv_addr = strdup(__p_nameserv_addr);
-	struct sockaddr_storage p_nameserv;
+    struct socket *nameserv_addrs = malloc(sizeof(struct socket) * 1);
+    struct sockaddr_storage p_nameserv;
 	int p_nameserv_len = get_addr(p_nameserv_addr, 53, AF_INET, 0, &p_nameserv);
 	(*env)->ReleaseStringUTFChars(env, j_nameserv_addr, __p_nameserv_addr);
+    nameserv_addrs[0].length = p_nameserv_len;
+    memcpy(&nameserv_addrs[0].addr, &p_nameserv, sizeof(struct sockaddr_storage));
 
 	const char *__p_topdomain = (*env)->GetStringUTFChars(env, j_topdomain,
 			NULL);
@@ -189,7 +192,7 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
 
 	srand((unsigned) time(NULL));
 	client_init();
-	client_set_nameservers(&p_nameserv, p_nameserv_len);
+	client_set_nameservers(nameserv_addrs, 1);
 	//client_set_dnstimeout(selecttimeout);
 	client_set_lazymode(lazy_mode);
 	client_set_topdomain(p_topdomain);
