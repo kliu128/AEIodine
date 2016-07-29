@@ -137,7 +137,7 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
 	srand((unsigned) time(NULL));
 	client_init();
 	client_set_nameservers(nameserv_addrs, 1);
-	//client_set_dnstimeout(selecttimeout);
+	client_set_dnstimeout(4000, 4000, 4000, 4000);
 	client_set_lazymode(lazy_mode);
 	client_set_topdomain(p_topdomain);
 	client_set_hostname_maxlen(hostname_maxlen);
