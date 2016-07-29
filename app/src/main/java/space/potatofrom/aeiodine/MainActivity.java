@@ -197,7 +197,5 @@ public class MainActivity extends AppCompatActivity {
             // User has already been asked
             onActivityResult(VPN_PREPARE_REQUEST_CODE, RESULT_OK, null);
         }
-
-        startService(new Intent(this, DnsVpnService.class));
     }
 }
