@@ -32,6 +32,10 @@ public class MainActivity extends AppCompatActivity {
                     String message = intent.getStringExtra(IodineClient.EXTRA_MESSAGE);
                     log(message);
                     break;
+                case DnsVpnService.ACTION_STATUS_UPDATE:
+                    updateConnectionUi(
+                            (DnsVpnStatus) intent.getSerializableExtra(DnsVpnService.EXTRA_STATUS));
+                    break;
             }
         }
     };
@@ -56,10 +60,11 @@ public class MainActivity extends AppCompatActivity {
             getSetSettingsDialog().show();
         }
 
-        updateConnectionUi(DnsVpnService.isRunning);
+        updateConnectionUi(DnsVpnService.status);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(IodineClient.ACTION_LOG_MESSAGE);
+        filter.addAction(DnsVpnService.ACTION_STATUS_UPDATE);
         registerReceiver(receiver, filter);
     }
 
@@ -95,14 +100,27 @@ public class MainActivity extends AppCompatActivity {
         switch (requestCode) {
             case VPN_PREPARE_REQUEST_CODE:
                 startService(new Intent(this, DnsVpnService.class));
-                updateConnectionUi(true);
                 break;
         }
     }
 
-    private void updateConnectionUi(boolean vpnConnected) {
-        connect.setEnabled(!vpnConnected);
-        disconnect.setEnabled(vpnConnected);
+    private void updateConnectionUi(DnsVpnStatus status) {
+        switch (status) {
+            case STARTED:
+                connect.setEnabled(false);
+                disconnect.setEnabled(false);
+                break;
+            case CONNECTED:
+                connect.setEnabled(false);
+                disconnect.setEnabled(true);
+                break;
+            case STOPPED:
+                connect.setEnabled(true);
+                disconnect.setEnabled(false);
+                break;
+            default:
+                throw new UnsupportedOperationException("Unknown vpn status??");
+        }
     }
 
     private Dialog getSetSettingsDialog() {

@@ -20,7 +20,11 @@ public class DnsVpnService extends VpnService {
     private Thread thread;
 
     public static DnsVpnService instance = null;
-    public static boolean isRunning = false;
+    public static DnsVpnStatus status = DnsVpnStatus.STOPPED;
+
+    public static final String ACTION_STATUS_UPDATE =
+            "space.potatofrom.cubic20.DnsVpnService.STATUS_UPDATE";
+    public static final String EXTRA_STATUS = "extra_status";
 
     private static final String TAG = "DnsVpnService";
     private static final int NOTIFICATION_ID = 1;
@@ -38,10 +42,12 @@ public class DnsVpnService extends VpnService {
 
     @Override
     public void onDestroy() {
-        if (isRunning) {
+        if (    status == DnsVpnStatus.STARTED ||
+                status == DnsVpnStatus.CONNECTED) {
             thread.interrupt();
             IodineClient.tunnelInterrupt();
-            isRunning = false;
+
+            changeStatus(DnsVpnStatus.STOPPED);
         }
         super.onDestroy();
     }
@@ -51,7 +57,7 @@ public class DnsVpnService extends VpnService {
      */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        isRunning = true;
+        changeStatus(DnsVpnStatus.STARTED);
         startForeground(NOTIFICATION_ID, getOngoingNotification());
 
         thread = new Thread(new Runnable() {
@@ -100,6 +106,11 @@ public class DnsVpnService extends VpnService {
         return START_STICKY;
     }
 
+    private void changeStatus(DnsVpnStatus status) {
+        DnsVpnService.status = status;
+        sendBroadcast(new Intent(ACTION_STATUS_UPDATE).putExtra(EXTRA_STATUS, status));
+    }
+
     private void startTunnel() throws IOException {
         VpnService.Builder builder = new VpnService.Builder();
         builder.setSession(TAG);
@@ -140,6 +151,8 @@ public class DnsVpnService extends VpnService {
         protect(IodineClient.getDnsFd());
 
         int tunFd = parcelFD.detachFd();
+
+        changeStatus(DnsVpnStatus.CONNECTED);
 
         IodineClient.tunnel(tunFd);
         try {
