@@ -23,7 +23,7 @@ model {
         ndk {
             moduleName "iodine-client"
             ldLibs.addAll(["android", "z", "log"])
-            CFlags.addAll(["--std=c11", "-Wall"])
+            CFlags.addAll(["--std=c11", "-Wall", "-DANDROID", "-DLINUX"])
         }
     }
 }
