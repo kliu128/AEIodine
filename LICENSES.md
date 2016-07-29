@@ -697,6 +697,16 @@ Public License instead of this License.  But first, please read
 <http://www.gnu.org/philosophy/why-not-lgpl.html>.
 ```
 
+## Andiodine (Android Iodine) ##
+
+Substantial amounts of code were reused from [Andiodine][1], mainly the JNI-
+interface code in `iodine-client.c`, with modifications. Andiodine is licensed 
+under [the same license as iodine][2], which is reproduced below in the iodine 
+section.
+
+[1]: https://github.com/yvesf/andiodine
+[2]: https://github.com/yvesf/andiodine#authors-and-license
+
 ## iodine ##
 
 The version of iodine currently in use is 
