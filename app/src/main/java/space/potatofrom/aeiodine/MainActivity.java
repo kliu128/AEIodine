@@ -161,14 +161,10 @@ public class MainActivity extends AppCompatActivity {
         boolean iodineUsePassword =
                 prefs.getBoolean(getString(R.string.pref_key_iodine_use_password), false);
         String iodinePassword = prefs.getString(getString(R.string.pref_key_iodine_password), null);
-        String sshIp = prefs.getString(getString(R.string.pref_key_ssh_ip), null);
-        String sshPort = prefs.getString(getString(R.string.pref_key_ssh_port), null);
 
         // Essentially, make sure these aren't null or empty
         return  iodineIp != null && !iodineIp.isEmpty() &&
-                (iodineUsePassword ? (iodinePassword != null && !iodinePassword.isEmpty()) : true) &&
-                sshIp != null && !sshIp.isEmpty() &&
-                sshPort != null && !sshPort.isEmpty();
+                (iodineUsePassword ? (iodinePassword != null && !iodinePassword.isEmpty()) : true);
     }
 
     private void logLine(@StringRes int resId) {
