@@ -79,7 +79,7 @@ public class DnsVpnService extends VpnService {
                             true,
                             password,
                             200,
-                            3072);
+                            0);
 
                     switch (returnVal) {
                         case RETURN_SUCCESS:
