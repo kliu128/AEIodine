@@ -1,0 +1,5 @@
+/bin/
+*.o
+/src/base64u.c
+/src/base64u.h
+/tests/test
