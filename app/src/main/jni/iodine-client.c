@@ -25,10 +25,6 @@
 static int dns_fd;
 
 static JavaVM *javaVM = 0;
-static void* env = 0;
-static jclass iodineClass = 0;
-
-int start_logger();
 
 JNIEXPORT jint JNI_OnLoad(JavaVM* jvm, void* reserved) {
     javaVM = jvm;
@@ -36,26 +32,6 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* jvm, void* reserved) {
     JNIEnv *env;
     jint rs = (*javaVM)->AttachCurrentThread(javaVM, &env, NULL);
     assert (rs == JNI_OK);
-
-    jclass localRefCls = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
-    if (localRefCls == NULL) {
-        printf("Can't find class %s", IODINE_CLIENT_CLASS);
-    }
-
-    //cache the EyeSightCore ref as global
-    /* Create a global reference */
-    iodineClass = (jclass*)(*env)->NewGlobalRef(env, localRefCls);
-
-    /* The local reference is no longer useful */
-    (*env)->DeleteLocalRef(env, localRefCls);
-
-    /* Is the global reference created successfully? */
-    if (iodineClass == NULL) {
-        printf("Error - class is still null when it is suppose to be global");
-        /* out of memory exception thrown */
-    }
-
-    start_logger();
 
     return JNI_VERSION_1_6;
 }
@@ -76,18 +52,18 @@ void android_log_callback(const char *msg_) {
         return;
     }
 
-    //if ((*javaVM)->AttachCurrentThread(javaVM, &env, 0) < 0) {
-    //    __android_log_print(ANDROID_LOG_ERROR, "iodine", "Failed to get the environment using AttachCurrentThread()");
-    //    return;
-    //}
+    if ((*javaVM)->AttachCurrentThread(javaVM, &env, 0) < 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "iodine", "Failed to get the environment using AttachCurrentThread()");
+        return;
+    }
 
-    //jclass clazz = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
-    //if (!clazz) {
-    //    __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: clazz == null");
-    //    return;
-    //}
+    jclass clazz = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
+    if (!clazz) {
+        __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: clazz == null");
+        return;
+    }
 
-    jmethodID log_callback = (*env)->GetStaticMethodID(env, iodineClass,
+    jmethodID log_callback = (*env)->GetStaticMethodID(env, clazz,
         IODINE_CLIENT_CLASS_LOG_CALLBACK, IODINE_CLIENT_CLASS_LOG_CALLBACK_SIG);
     if (!log_callback) {
         __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: log_callback == null");
@@ -99,42 +75,10 @@ void android_log_callback(const char *msg_) {
         __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: message == null");
         return;
     }
-    (*env)->CallStaticVoidMethod(env, iodineClass, log_callback, message);
+    (*env)->CallStaticVoidMethod(env, clazz, log_callback, message);
 
     (*env)->DeleteLocalRef(env,message);
     free(msg);
-}
-
-static int pfd[2];
-static pthread_t thr;
-
-static void *thread_func(void* x)
-{
-    ssize_t rdsz;
-    char buf[128];
-    while((rdsz = read(pfd[0], buf, sizeof buf - 1)) > 0) {
-        buf[rdsz] = 0;  /* add null-terminator */
-        android_log_callback(buf);
-    }
-    return 0;
-}
-
-int start_logger()
-{
-    /* make stdout line-buffered and stderr unbuffered */
-    setvbuf(stdout, 0, _IOLBF, 0);
-    setvbuf(stderr, 0, _IONBF, 0);
-
-    /* create the pipe and redirect stdout and stderr */
-    pipe(pfd);
-    dup2(pfd[1], STDOUT_FILENO);
-    dup2(pfd[1], STDERR_FILENO);
-
-    /* spawn the logging thread */
-    if(pthread_create(&thr, 0, thread_func, 0) == -1)
-        return -1;
-    pthread_detach(thr);
-    return 0;
 }
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_getDnsFd(
