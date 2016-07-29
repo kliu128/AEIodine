@@ -14,13 +14,22 @@
         android:layout_height="wrap_content"
         android:text="@string/main_connect"
         android:onClick="connect"
-        android:id="@+id/button" />
+        android:id="@+id/connect" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/main_disconnect"
+        android:id="@+id/disconnect"
+        android:layout_alignBottom="@+id/connect"
+        android:layout_toEndOf="@+id/connect"
+        android:enabled="false" />
 
     <ScrollView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/scrollView"
-        android:layout_below="@+id/button"
+        android:layout_below="@+id/connect"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true">
         <TextView
@@ -29,6 +38,4 @@
             android:text=""
             android:id="@+id/output" />
     </ScrollView>
-
-
 </RelativeLayout>

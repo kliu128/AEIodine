@@ -4,7 +4,7 @@ import android.content.Intent;
 import android.util.Log;
 
 public class IodineClient {
-    public static final String TAG = "NATIVE";
+    public static final String TAG = "NATIVEIODINECLI";
 
     public static native int getDnsFd();
 
@@ -24,6 +24,28 @@ public class IodineClient {
     public static native void tunnelInterrupt();
 
     public static native String getPropertyNetDns1();
+
+    /**
+     * Intent to distribute logmessages from native code
+     * LOG_MESSAGE(EXTRA_MESSAGE)
+     */
+    public static final String ACTION_LOG_MESSAGE =
+            "space.potatofrom.aeiodine.IodineClient.ACTION_LOG_MESSAGE";
+
+    public static final String EXTRA_MESSAGE = "message";
+
+    @SuppressWarnings("UnusedDeclaration")
+    public static void log_callback(String message) {
+        Intent intent = new Intent(ACTION_LOG_MESSAGE);
+
+        intent.putExtra(EXTRA_MESSAGE, message);
+        if (DnsVpnService.instance != null) {
+            DnsVpnService.instance.sendBroadcast(intent);
+        } else {
+            Log.d(TAG, "No VPNService running, cannot broadcast native message");
+        }
+    }
+
 
     static {
         System.loadLibrary("iodine-client");

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 
 #include <sys/system_properties.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "iodine/src/common.h"
 #include "iodine/src/tun.h"
@@ -23,61 +25,116 @@
 static int dns_fd;
 
 static JavaVM *javaVM = 0;
+static void* env = 0;
+static jclass iodineClass = 0;
+
+int start_logger();
 
 JNIEXPORT jint JNI_OnLoad(JavaVM* jvm, void* reserved) {
     javaVM = jvm;
+
+    JNIEnv *env;
+    jint rs = (*javaVM)->AttachCurrentThread(javaVM, &env, NULL);
+    assert (rs == JNI_OK);
+
+    jclass localRefCls = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
+    if (localRefCls == NULL) {
+        printf("Can't find class %s", IODINE_CLIENT_CLASS);
+    }
+
+    //cache the EyeSightCore ref as global
+    /* Create a global reference */
+    iodineClass = (jclass*)(*env)->NewGlobalRef(env, localRefCls);
+
+    /* The local reference is no longer useful */
+    (*env)->DeleteLocalRef(env, localRefCls);
+
+    /* Is the global reference created successfully? */
+    if (iodineClass == NULL) {
+        printf("Error - class is still null when it is suppose to be global");
+        /* out of memory exception thrown */
+    }
+
+    start_logger();
 
     return JNI_VERSION_1_6;
 }
 
 void android_log_callback(const char *msg_) {
     int i;
-    JNIEnv *env;
     char *msg = strdup(msg_);
 
     if (!msg) {
         return;
     }
 
-    (*javaVM)->GetEnv(javaVM, (void**)&env, JNI_VERSION_1_6);
+    JNIEnv *env;
+    jint rs = (*javaVM)->AttachCurrentThread(javaVM, &env, NULL);
+    assert (rs == JNI_OK);
     if (!env) {
         __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: env == null");
         return;
     }
 
-    if ((*javaVM)->AttachCurrentThread(javaVM, &env, 0) < 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "iodine", "Failed to get the environment using AttachCurrentThread()");
-        return;
-    }
+    //if ((*javaVM)->AttachCurrentThread(javaVM, &env, 0) < 0) {
+    //    __android_log_print(ANDROID_LOG_ERROR, "iodine", "Failed to get the environment using AttachCurrentThread()");
+    //    return;
+    //}
 
-    jclass clazz = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
-    if (!clazz) {
-        __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: clazz == null");
-        return;
-    }
+    //jclass clazz = (*env)->FindClass(env, IODINE_CLIENT_CLASS);
+    //if (!clazz) {
+    //    __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: clazz == null");
+    //    return;
+    //}
 
-    jmethodID log_callback = (*env)->GetStaticMethodID(env, clazz,
+    jmethodID log_callback = (*env)->GetStaticMethodID(env, iodineClass,
         IODINE_CLIENT_CLASS_LOG_CALLBACK, IODINE_CLIENT_CLASS_LOG_CALLBACK_SIG);
     if (!log_callback) {
         __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: log_callback == null");
         return;
     }
 
-    for (i = 0; i< strlen(msg); i++) {
-        // not printable
-        if ( ! (msg[i] >= 0x20 && msg[i] <= 0x7e)) {
-            msg[i] = ' ';
-        }
-    }
     jstring message = (*env)->NewStringUTF(env, msg);
     if (!message) {
         __android_log_print(ANDROID_LOG_ERROR, "iodine", "Native Debug: message == null");
         return;
     }
-    (*env)->CallStaticVoidMethod(env, clazz, log_callback, message);
+    (*env)->CallStaticVoidMethod(env, iodineClass, log_callback, message);
 
     (*env)->DeleteLocalRef(env,message);
     free(msg);
+}
+
+static int pfd[2];
+static pthread_t thr;
+
+static void *thread_func(void* x)
+{
+    ssize_t rdsz;
+    char buf[128];
+    while((rdsz = read(pfd[0], buf, sizeof buf - 1)) > 0) {
+        buf[rdsz] = 0;  /* add null-terminator */
+        android_log_callback(buf);
+    }
+    return 0;
+}
+
+int start_logger()
+{
+    /* make stdout line-buffered and stderr unbuffered */
+    setvbuf(stdout, 0, _IOLBF, 0);
+    setvbuf(stderr, 0, _IONBF, 0);
+
+    /* create the pipe and redirect stdout and stderr */
+    pipe(pfd);
+    dup2(pfd[1], 1);
+    dup2(pfd[1], 2);
+
+    /* spawn the logging thread */
+    if(pthread_create(&thr, 0, thread_func, 0) == -1)
+        return -1;
+    pthread_detach(thr);
+    return 0;
 }
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_getDnsFd(
@@ -88,8 +145,6 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_getDnsFd(
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
 		JNIEnv *env, jclass klass, jstring j_nameserv_addr, jstring j_topdomain, jboolean j_raw_mode, jboolean j_lazy_mode,
 		jstring j_password, jint j_request_hostname_size, jint j_response_fragment_size) {
-
-	// XXX strdup leaks
 	const char *__p_nameserv_addr = (*env)->GetStringUTFChars(env,
 			j_nameserv_addr, NULL);
 	char *p_nameserv_addr = strdup(__p_nameserv_addr);

@@ -1,10 +1,13 @@
 package space.potatofrom.aeiodine;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.media.audiofx.BassBoost;
+import android.net.VpnService;
 import android.preference.PreferenceManager;
 import android.support.annotation.StringRes;
 import android.support.v7.app.AlertDialog;
@@ -14,27 +17,34 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.HashSet;
-import java.util.Set;
-
 public class MainActivity extends AppCompatActivity {
+    private Button connect;
+    private Button disconnect;
     private TextView output;
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getAction()) {
+                case IodineClient.ACTION_LOG_MESSAGE:
+                    String message = intent.getStringExtra(IodineClient.EXTRA_MESSAGE);
+                    log(message);
+                    break;
+            }
+        }
+    };
+
+    private static final int VPN_PREPARE_REQUEST_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        connect = (Button) findViewById(R.id.connect);
+        disconnect = (Button) findViewById(R.id.disconnect);
         output = (TextView) findViewById(R.id.output);
     }
 
@@ -45,6 +55,19 @@ public class MainActivity extends AppCompatActivity {
         if (!areRequiredPrefsSet()) {
             getSetSettingsDialog().show();
         }
+
+        updateConnectionUi(DnsVpnService.isRunning);
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(IodineClient.ACTION_LOG_MESSAGE);
+        registerReceiver(receiver, filter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        unregisterReceiver(receiver);
     }
 
     @Override
@@ -63,6 +86,23 @@ public class MainActivity extends AppCompatActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case VPN_PREPARE_REQUEST_CODE:
+                startService(new Intent(this, DnsVpnService.class));
+                updateConnectionUi(true);
+                break;
+        }
+    }
+
+    private void updateConnectionUi(boolean vpnConnected) {
+        connect.setEnabled(!vpnConnected);
+        disconnect.setEnabled(vpnConnected);
     }
 
     private Dialog getSetSettingsDialog() {
@@ -113,28 +153,12 @@ public class MainActivity extends AppCompatActivity {
                 sshPort != null && !sshPort.isEmpty();
     }
 
-    private void startLog(final InputStream stream) throws IOException {
-        Thread logThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-                    int c;
-                    while ((c = reader.read()) != -1) {
-                        final char ch = (char)c;
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                output.append(Character.toString(ch));
-                            }
-                        });
-                    }
-                    reader.close();
-                } catch (IOException e) { }
-            }
-        });
-        logThread.setPriority(Thread.MIN_PRIORITY);
-        logThread.start();
+    private void logLine(@StringRes int resId) {
+        logLine(getString(resId));
+    }
+
+    private void logLine(String text) {
+        log(text + "\n");
     }
 
     private void log(@StringRes int resId) {
@@ -142,60 +166,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void log(String text) {
-        output.append(text + "\n");
+        output.append(text);
     }
 
     public void connect(View view) {
         // Load up preferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-        String iodineIp = prefs.getString(getString(R.string.pref_key_iodine_ip), null);
-        boolean iodineUsePassword =
-                prefs.getBoolean(getString(R.string.pref_key_iodine_use_password), false);
-        String iodinePassword = prefs.getString(getString(R.string.pref_key_iodine_password), null);
-        String iodineExtraParams =
-                prefs.getString(getString(R.string.pref_key_iodine_extra_params), "");
-
-        String sshIp = prefs.getString(getString(R.string.pref_key_ssh_ip), null);
-        int sshPort = Integer.valueOf(prefs.getString(getString(R.string.pref_key_ssh_port), null));
-        boolean sshUseCompression =
-                prefs.getBoolean(getString(R.string.pref_key_ssh_use_compression), false);
-
         output.setText(""); // Clear output
 
-        Process iodineProcess = null;
-        Session sshSession = null;
+        logLine(R.string.log_starting_iodine);
 
-        try {
-            // Set up Iodine client
-            log(R.string.log_starting_iodine);
-
-            IodineClient.connect(iodineIp, iodineIp, false, true, iodineUsePassword ? iodinePassword : "", 200, 0);
-            startLog(iodineProcess.getInputStream());
-
-            // Set up SSH tunnel
-            sshSession = new JSch().getSession(sshIp);
-            sshSession.setPort(sshPort);
-
-            if (sshUseCompression) {
-                sshSession.setConfig("compression.s2c", "zlib@openssh.com,zlib,none");
-                sshSession.setConfig("compression.c2s", "zlib@openssh.com,zlib,none");
-                sshSession.setConfig("compression_level", "9");
-            }
-
-            // TODO: Handle authentication
-
-            sshSession.connect();
-        } catch (IOException|JSchException e) {
-            log(e.getMessage());
-        } finally {
-            if (sshSession != null && sshSession.isConnected()) {
-                sshSession.disconnect();
-            }
-            if (iodineProcess != null) {
-                iodineProcess.destroy();
-            }
+        Intent prepare = VpnService.prepare(getApplicationContext());
+        if (prepare != null) {
+            startActivityForResult(prepare, VPN_PREPARE_REQUEST_CODE);
+        } else  {
+            // User has already been asked
+            onActivityResult(VPN_PREPARE_REQUEST_CODE, RESULT_OK, null);
         }
 
+        startService(new Intent(this, DnsVpnService.class));
     }
 }
