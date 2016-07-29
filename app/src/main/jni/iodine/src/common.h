@@ -149,6 +149,15 @@ void read_password(char*, size_t);
 
 int check_topdomain(char *, char **);
 
+#ifdef __ANDROID__
+#include <android/log.h>
+
+#define printf(...) android_printf(__VA_ARGS__)
+#define fprintf(egal,...) android_printf(__VA_ARGS__)
+
+void android_printf(const char *fmt, ...);
+#endif
+
 #if defined(WINDOWS32) || defined(ANDROID)
 #ifndef ANDROID
 int inet_aton(const char *cp, struct in_addr *inp);

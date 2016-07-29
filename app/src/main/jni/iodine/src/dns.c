@@ -35,7 +35,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <err.h>
-#ifdef ANDROID
+#if defined(ANDROID) || defined(__ANDROID__)
 #include "android_dns.h"
 #endif
 #endif

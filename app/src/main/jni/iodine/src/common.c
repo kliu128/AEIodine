@@ -458,6 +458,23 @@ errx(int eval, const char *fmt, ...)
 }
 #endif
 
+#if defined(__ANDROID__)
+void android_log_callback(const char *);
+static char printf_buf[1024];;
+void android_printf(const char *fmt, ...)
+{
+	va_list list;
+	va_start(list, fmt);
+
+	vsnprintf(printf_buf,1024,fmt,list);
+	android_log_callback(printf_buf);
+
+	__android_log_vprint(ANDROID_LOG_INFO, "Iodine",
+						 fmt, list);
+	va_end(list);
+}
+#endif
+
 #ifndef WINDOWS32
 /* Set FD_CLOEXEC flag on file descriptor.
  * This stops it from being inherited by system() calls.
