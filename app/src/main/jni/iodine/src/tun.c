@@ -505,7 +505,9 @@ write_tun(int tun_fd, uint8_t *data, size_t len)
 #elif defined (DARWIN)
 	/* Darwin tun has no header, Darwin utun does */
 	int header = !strncmp(if_name, "utun", 4);
-#else  /* LINUX/OPENBSD */
+#elif defined(__ANDROID__)
+    int header = 0;
+#else /* LINUX/OPENBSD */
 	int header = 1;
 #endif
 
@@ -546,6 +548,8 @@ read_tun(int tun_fd, uint8_t *buf, size_t len)
 #elif defined (DARWIN)
 	/* Darwin tun has no header, Darwin utun does */
 	int header = !strncmp(if_name, "utun", 4);
+#elif defined (__ANDROID__)
+    int header = 0;
 #else  /* LINUX/OPENBSD */
 	int header = 1;
 #endif
@@ -599,7 +603,18 @@ tun_setip(const char *ip, const char *other_ip, int netbits)
 		fprintf(stderr, "Invalid IP: %s!\n", ip);
 		return 1;
 	}
-#ifndef WINDOWS32
+#if defined(__ANDROID__)
+	if (tun_config_android.ip) {
+		free(tun_config_android.ip);
+	}
+	if (tun_config_android.remoteip) {
+		free(tun_config_android.remoteip);
+	}
+	tun_config_android.ip = strdup(ip);
+	tun_config_android.remoteip = strdup(other_ip);
+	tun_config_android.netbits = netbits;
+	return 0;
+#elif !defined(WINDOWS32)
 # ifdef FREEBSD
 	display_ip = other_ip; /* FreeBSD wants other IP as second IP */
 # else
@@ -667,7 +682,10 @@ tun_setip(const char *ip, const char *other_ip, int netbits)
 int
 tun_setmtu(const unsigned mtu)
 {
-#ifndef WINDOWS32
+#ifdef __ANDROID__
+	tun_config_android.mtu = mtu;
+	return 0;
+#elif !defined(WINDOWS32)
 	char cmdline[512];
 
 	if (mtu > 200 && mtu <= 1500) {
