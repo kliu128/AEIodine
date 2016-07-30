@@ -1357,7 +1357,11 @@ client_tunnel(int tun_fd, int dns_fd)
 	if (debug >= 5)
 		window_debug = debug - 3;
 
-	while (running) {
+	while (running
+#ifdef __ANDROID__
+        && !tun_config_android.request_disconnect
+#endif
+    ) {
 		if (!use_min_send)
 			tv = ms_to_timeval(max_timeout_ms);
 
