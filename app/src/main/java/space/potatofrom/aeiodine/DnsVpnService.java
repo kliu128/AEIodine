@@ -75,7 +75,6 @@ public class DnsVpnService extends VpnService {
                     int returnVal = IodineClient.connect(
                             tunnelNameserver,
                             domain,
-                            false,
                             true,
                             password,
                             200,

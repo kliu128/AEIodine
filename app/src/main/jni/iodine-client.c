@@ -1,22 +1,17 @@
 #include <assert.h>
 #include <string.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
-#include <netdb.h>
 
 #include <android/log.h>
 #include <jni.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include <sys/system_properties.h>
 #include <stdio.h>
-#include <pthread.h>
 
-#include "iodine/src/common.h"
-#include "iodine/src/tun.h"
+#include "iodine/src/iodine.h"
 #include "iodine/src/client.h"
-#include "iodine/src/util.h"
+#include "iodine/src/tun.h"
 
 #define IODINE_CLIENT_CLASS "space/potatofrom/aeiodine/IodineClient"
 #define IODINE_CLIENT_CLASS_LOG_CALLBACK "log_callback"
@@ -87,102 +82,39 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_getDnsFd(
 }
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
-		JNIEnv *env, jclass klass, jstring j_nameserv_addr, jstring j_topdomain, jboolean j_raw_mode, jboolean j_lazy_mode,
+		JNIEnv *env, jclass klass, jstring j_nameserv_addr, jstring j_topdomain, jboolean j_lazy_mode,
 		jstring j_password, jint j_request_hostname_size, jint j_response_fragment_size) {
-	const char *__p_nameserv_addr = (*env)->GetStringUTFChars(env,
-			j_nameserv_addr, NULL);
-	char *p_nameserv_addr = strdup(__p_nameserv_addr);
-    struct socket *nameserv_addrs = malloc(sizeof(struct socket) * 1);
-    struct sockaddr_storage p_nameserv;
-	int p_nameserv_len = get_addr(p_nameserv_addr, 53, AF_INET, 0, &p_nameserv);
-	(*env)->ReleaseStringUTFChars(env, j_nameserv_addr, __p_nameserv_addr);
-    nameserv_addrs[0].length = p_nameserv_len;
-    memcpy(&nameserv_addrs[0].addr, &p_nameserv, sizeof(struct sockaddr_storage));
+	char request_hostname_size_str[15];
+	snprintf(request_hostname_size_str, 15, "%d", j_request_hostname_size);
+	char response_fragment_size_str[15];
+	snprintf(response_fragment_size_str, 15, "%d", j_response_fragment_size);
+    const char *password = (*env)->GetStringUTFChars(env, j_password, JNI_FALSE);
+    const char *nameserv_addr = (*env)->GetStringUTFChars(env, j_nameserv_addr, JNI_FALSE);
+    const char *topdomain = (*env)->GetStringUTFChars(env, j_topdomain, JNI_FALSE);
 
-	const char *__p_topdomain = (*env)->GetStringUTFChars(env, j_topdomain,
-			NULL);
-	const char *p_topdomain = strdup(__p_topdomain);
-	__android_log_print(ANDROID_LOG_ERROR, "iodine", "Topdomain from vm: %s", p_topdomain);
+	const char* args[] = {
+	        "iodine",
+			"-L", j_lazy_mode ? "1" : "0",
+			"-P", password,
+			"-M", request_hostname_size_str,
+			//"-m", response_fragment_size_str,
+			"-r",
+			topdomain, nameserv_addr
+	};
 
-	(*env)->ReleaseStringUTFChars(env, j_topdomain, __p_topdomain);
-	__android_log_print(ANDROID_LOG_ERROR, "iodine", "Topdomain from vm: %s", p_topdomain);
+	int retVal = main(10, args);
 
-	const char *p_password = (*env)->GetStringUTFChars(env, j_password, NULL);
-	char passwordField[33];
-	memset(passwordField, 0, 33);
-	strncpy(passwordField, p_password, 32);
-	(*env)->ReleaseStringUTFChars(env, j_password, p_password);
+    (*env)->ReleaseStringUTFChars(env, j_password, password);
+    (*env)->ReleaseStringUTFChars(env, j_nameserv_addr, nameserv_addr);
+    (*env)->ReleaseStringUTFChars(env, j_topdomain, topdomain);
 
-	tun_config_android.request_disconnect = 0;
-
-	int selecttimeout = 2; // original: 4
-	int lazy_mode;
-	int hostname_maxlen = j_request_hostname_size;
-	int raw_mode;
-	int autodetect_frag_size = j_response_fragment_size == 0 ? 1 : 0;
-	int max_downstream_frag_size = j_response_fragment_size;
-
-	if (j_raw_mode) {
-		raw_mode = 1;
-	} else {
-		raw_mode = 0;
-	}
-
-	if (j_lazy_mode) {
-		lazy_mode = 1;
-	} else {
-		lazy_mode = 0;
-	}
-
-	srand((unsigned) time(NULL));
-	client_init();
-	client_set_nameservers(nameserv_addrs, 1);
-	client_set_dnstimeout(4000, 4000, 4000, 4000);
-	client_set_lazymode(lazy_mode);
-	client_set_topdomain(p_topdomain);
-	client_set_hostname_maxlen(hostname_maxlen);
-	client_set_password(passwordField);
-
-	if ((dns_fd = open_dns_from_host(NULL, 0, AF_INET, AI_PASSIVE)) == -1) {
-		printf("Could not open dns socket: %s", strerror(errno));
-		return 1;
-	}
-
-	if (client_handshake(dns_fd, raw_mode, autodetect_frag_size,
-			max_downstream_frag_size)) {
-		printf("Handshake unsuccessful: %s", strerror(errno));
-		close(dns_fd);
-		return 2;
-	}
-
-	if (client_get_conn() == CONN_RAW_UDP) {
-		printf("Sending raw traffic directly to %s\n", client_get_raw_addr());
-	}
-
-	printf("Handshake successful, leave native code");
-	return 0;
-}
-
-
-static int tunnel_continue_cb() {
-	return ! tun_config_android.request_disconnect;
+    return retVal;
 }
 
 JNIEXPORT void JNICALL Java_space_potatofrom_aeiodine_IodineClient_tunnelInterrupt(JNIEnv *env,
 		jclass klass) {
 	tun_config_android.request_disconnect = 1;
 	client_stop();
-}
-
-JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_tunnel(JNIEnv *env,
-		jclass klass, jint tun_fd) {
-
-    printf("Run client_tunnel_cb");
-	int retval = client_tunnel(tun_fd, dns_fd);
-
-	close(dns_fd);
-	close(tun_fd);
-	return retval;
 }
 
 // String IodineClient.getIp()
