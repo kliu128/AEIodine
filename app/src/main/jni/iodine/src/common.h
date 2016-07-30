@@ -190,9 +190,14 @@ int inet_aton(const char *cp, struct in_addr *inp);
 #endif
 
 void err(int eval, const char *fmt, ...);
-void warn(const char *fmt, ...);
 void errx(int eval, const char *fmt, ...);
+#ifdef __ANDROID__
+#define warn(...) android_printf(__VA_ARGS__)
+#define warnx(...) android_printf(__VA_ARGS__)
+#else
+void warn(const char *fmt, ...);
 void warnx(const char *fmt, ...);
+#endif
 #endif
 
 #ifndef WINDOWS32

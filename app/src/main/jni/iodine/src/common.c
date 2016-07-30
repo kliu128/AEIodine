@@ -484,6 +484,7 @@ inet_aton(const char *cp, struct in_addr *inp)
 }
 #endif
 
+#ifndef __ANDROID__
 void
 warn(const char *fmt, ...)
 {
@@ -511,6 +512,7 @@ warnx(const char *fmt, ...)
 	fprintf(stderr, "\n");
 	va_end(list);
 }
+#endif
 
 void
 err(int eval, const char *fmt, ...)
@@ -537,17 +539,19 @@ errx(int eval, const char *fmt, ...)
 
 #if defined(__ANDROID__)
 void android_log_callback(const char *);
-static char printf_buf[1024];;
+static char printf_buf[1024];
 void android_printf(const char *fmt, ...)
 {
 	va_list list;
-	va_start(list, fmt);
 
+	va_start(list, fmt);
 	vsnprintf(printf_buf,1024,fmt,list);
+
 	android_log_callback(printf_buf);
 
 	__android_log_vprint(ANDROID_LOG_INFO, "Iodine",
 						 fmt, list);
+
 	va_end(list);
 }
 #endif
