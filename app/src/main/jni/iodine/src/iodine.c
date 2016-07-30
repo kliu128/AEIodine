@@ -357,7 +357,9 @@ main(int argc, char **argv)
 		}
 	}
 
+#ifndef __ANDROID__
 	check_superuser(usage);
+#endif
 
 	argc -= optind;
 	argv += optind;
