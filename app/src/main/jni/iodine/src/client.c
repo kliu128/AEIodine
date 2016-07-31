@@ -1359,7 +1359,7 @@ client_tunnel(int tun_fd, int dns_fd)
 
 	while (running
 #ifdef __ANDROID__
-        && !tun_config_android.request_disconnect
+        && tun_config_android.request_disconnect != 1
 #endif
     ) {
 		if (!use_min_send)
