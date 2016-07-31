@@ -117,11 +117,11 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
     client_set_nameservers(nameserv_addrs, 1);
 
     if ((dns_fd = open_dns_from_host(NULL, 0, nameservaddr_sockaddr.ss_family, AI_PASSIVE)) < 0) {
-        printf("Could not open DNS socket: %s", strerror(errno));
+        printf("Could not open DNS socket: %s\n", strerror(errno));
         return 1;
     }
     if (client_handshake(dns_fd, 0, j_response_fragment_size == 0 ? 1 : 0, j_response_fragment_size)) {
-        printf("Handshake unsuccessful: %s", strerror(errno));
+        printf("Handshake unsuccessful: %s\n", strerror(errno));
         close(dns_fd);
         return 2;
     }
