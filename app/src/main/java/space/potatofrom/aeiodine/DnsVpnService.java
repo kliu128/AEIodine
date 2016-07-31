@@ -1,8 +1,12 @@
 package space.potatofrom.aeiodine;
 
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
@@ -18,12 +22,16 @@ import java.net.UnknownHostException;
 
 public class DnsVpnService extends VpnService {
     private Thread thread;
+    private int tunFd;
+    private NotificationManager notMan;
 
     public static DnsVpnService instance = null;
     public static DnsVpnStatus status = DnsVpnStatus.STOPPED;
 
     public static final String ACTION_STATUS_UPDATE =
             "space.potatofrom.cubic20.DnsVpnService.STATUS_UPDATE";
+    public static final String ACTION_STOP =
+            "space.potatofrom.cubic20.DnsVpnService.STOP";
     public static final String EXTRA_STATUS = "extra_status";
 
     private static final String TAG = "DnsVpnService";
@@ -33,23 +41,29 @@ public class DnsVpnService extends VpnService {
     private static final int RETURN_UNABLE_TO_OPEN_DNS_SOCKET = 1;
     private static final int RETURN_HANDSHAKE_FAILED = 2;
 
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getAction()) {
+                case ACTION_STOP:
+                    stop();
+                    break;
+                default:
+                    throw new UnsupportedOperationException(
+                            "This broadcast receiver does not implement action " + intent.getAction());
+            }
+        }
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
 
+        notMan = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         instance = this;
-    }
-
-    @Override
-    public void onDestroy() {
-        if (    status == DnsVpnStatus.STARTED ||
-                status == DnsVpnStatus.CONNECTED) {
-            thread.interrupt();
-            IodineClient.tunnelInterrupt();
-
-            changeStatus(DnsVpnStatus.STOPPED);
-        }
-        super.onDestroy();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_STOP);
+        registerReceiver(receiver, filter);
     }
 
     /**
@@ -86,13 +100,13 @@ public class DnsVpnService extends VpnService {
                             startTunnel();
                             break;
                         case RETURN_UNABLE_TO_OPEN_DNS_SOCKET:
-                            stopSelf();
+                            stop();
                             throw new SocketException("Could not open iodine dns socket");
                         case RETURN_HANDSHAKE_FAILED:
-                            stopSelf();
+                            stop();
                             throw new ConnectException("Failed handshake with iodine server");
                         default:
-                            stopSelf();
+                            stop();
                             throw new UnknownError("??? " + returnVal);
                     }
                 } catch (IOException e) {
@@ -102,7 +116,28 @@ public class DnsVpnService extends VpnService {
         }, TAG);
 
         thread.start();
-        return START_STICKY;
+        return START_NOT_STICKY;
+    }
+
+    private void stop() {
+        if (    status == DnsVpnStatus.STARTED ||
+                status == DnsVpnStatus.CONNECTED) {
+            thread.interrupt();
+            unregisterReceiver(receiver);
+        }
+        if (status == DnsVpnStatus.CONNECTED) {
+            IodineClient.tunnelInterrupt();
+            try {
+                ParcelFileDescriptor.adoptFd(tunFd).close();
+            } catch (IOException e) {
+            }
+        }
+        if (status == DnsVpnStatus.STOPPED) {
+            throw new IllegalStateException("Attempted to stop " + TAG + " when it was not active");
+        } else {
+            changeStatus(DnsVpnStatus.STOPPED);
+            stopSelf();
+        }
     }
 
     private void changeStatus(DnsVpnStatus status) {
@@ -149,16 +184,16 @@ public class DnsVpnService extends VpnService {
         ParcelFileDescriptor parcelFD = builder.establish();
         protect(IodineClient.getDnsFd());
 
-        int tunFd = parcelFD.detachFd();
+        tunFd = parcelFD.detachFd();
 
         changeStatus(DnsVpnStatus.CONNECTED);
 
         IodineClient.tunnel(tunFd);
-        try {
-            ParcelFileDescriptor.adoptFd(tunFd).close();
-        } catch (IOException e) {
-            throw new IOException(
-                    "Failed to close fd after tunnel exited");
+
+        if (status != DnsVpnStatus.STOPPED) {
+            // Only stop again if not stopped (it might be stopped already if
+            // the user manually disconnects)
+            stop();
         }
     }
 

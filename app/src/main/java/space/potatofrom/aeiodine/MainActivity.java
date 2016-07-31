@@ -198,4 +198,8 @@ public class MainActivity extends AppCompatActivity {
             onActivityResult(VPN_PREPARE_REQUEST_CODE, RESULT_OK, null);
         }
     }
+
+    public void disconnect(View view) {
+        sendBroadcast(new Intent(DnsVpnService.ACTION_STOP));
+    }
 }
