@@ -14,12 +14,10 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class DnsVpnService extends VpnService {
     private Thread thread;
-    private int tunFd;
+    private int tunnelFd;
     private NotificationManager notMan;
 
     public static DnsVpnService instance = null;
@@ -135,7 +133,7 @@ public class DnsVpnService extends VpnService {
         if (status == DnsVpnStatus.CONNECTED) {
             IodineClient.tunnelInterrupt();
             try {
-                ParcelFileDescriptor.adoptFd(tunFd).close();
+                ParcelFileDescriptor.adoptFd(tunnelFd).close();
             } catch (IOException e) {
             }
         }
@@ -157,48 +155,32 @@ public class DnsVpnService extends VpnService {
     }
 
     private void startTunnel() throws IOException {
-        VpnService.Builder builder = new VpnService.Builder();
-        builder.setSession(TAG);
+        VpnService.Builder vpnBuilder = new VpnService.Builder();
+        vpnBuilder.setSession(TAG);
 
         String clientIp = IodineClient.getIp();
         int netBits = IodineClient.getNetbits();
         int mtu = IodineClient.getMtu();
-        log("Build tunnel for configuration: clientIp=" + clientIp + " netbits=" + netBits + " mtu=" + mtu);
+        String dnsServer = IodineClient.getPropertyNetDns1();
+        log("Build tunnel for configuration: " +
+                "clientIp=" + clientIp + ", " +
+                "netbits=" + netBits + ", " +
+                "mtu=" + mtu + ", " +
+                "dnsServer=" + dnsServer);
 
-        String[] hostIpBytesString = clientIp.split("\\.");
-        if (hostIpBytesString.length != 4) {
-            throw new InvalidClientIpException("Server sent invalid IP");
-        }
-        byte[] clientIpBytes = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            try {
-                int integer = Integer.parseInt(hostIpBytesString[i]);
-                clientIpBytes[i] = (byte) (integer);
-            } catch (NumberFormatException e) {
-                throw new InvalidClientIpException("Server sent invalid IP", e);
-            }
-        }
+        vpnBuilder.addDnsServer(dnsServer);
+        vpnBuilder.addAddress(clientIp, netBits);
+        vpnBuilder.addRoute("0.0.0.0", 0);
+        vpnBuilder.setMtu(mtu);
 
-        InetAddress clientAddress;
-        try {
-            clientAddress = InetAddress.getByAddress(clientIpBytes);
-        } catch (UnknownHostException e) {
-            throw new InvalidClientIpException("Server sent invalid IP", e);
-        }
-
-        builder.addDnsServer(IodineClient.getPropertyNetDns1());
-        builder.addAddress(clientAddress, netBits);
-        builder.addRoute("0.0.0.0", 0);
-        builder.setMtu(mtu);
-
-        ParcelFileDescriptor parcelFD = builder.establish();
+        ParcelFileDescriptor parcelFD = vpnBuilder.establish();
         protect(IodineClient.getDnsFd());
 
-        tunFd = parcelFD.detachFd();
+        tunnelFd = parcelFD.detachFd();
 
         changeStatus(DnsVpnStatus.CONNECTED);
 
-        IodineClient.tunnel(tunFd);
+        IodineClient.tunnel(tunnelFd);
 
         if (status != DnsVpnStatus.STOPPED) {
             // Only stop again if not stopped (it might be stopped already if
