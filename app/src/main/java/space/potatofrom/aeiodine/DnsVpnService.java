@@ -133,6 +133,7 @@ public class DnsVpnService extends VpnService {
             try {
                 ParcelFileDescriptor.adoptFd(tunnelFd).close();
             } catch (IOException e) {
+                log("Could not close tunnel file descriptor after iodine stop.");
             }
         }
         if (status == DnsVpnStatus.STOPPED) {
