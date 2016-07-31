@@ -18,7 +18,6 @@ import java.io.IOException;
 public class DnsVpnService extends VpnService {
     private Thread thread;
     private int tunnelFd;
-    private NotificationManager notMan;
 
     public static DnsVpnService instance = null;
     public static DnsVpnStatus status = DnsVpnStatus.STOPPED;
@@ -57,7 +56,6 @@ public class DnsVpnService extends VpnService {
     public void onCreate() {
         super.onCreate();
 
-        notMan = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         instance = this;
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_STOP);
