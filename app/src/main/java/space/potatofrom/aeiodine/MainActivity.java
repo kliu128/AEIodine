@@ -32,6 +32,9 @@ public class MainActivity extends AppCompatActivity {
                     String message = intent.getStringExtra(IodineClient.EXTRA_MESSAGE);
                     log(message);
                     break;
+                case DnsVpnService.ACTION_LOG_MESSAGE:
+                    log("[DnsVpnService] " + intent.getStringExtra(DnsVpnService.EXTRA_MESSAGE));
+                    break;
                 case DnsVpnService.ACTION_STATUS_UPDATE:
                     updateConnectionUi(
                             (DnsVpnStatus) intent.getSerializableExtra(DnsVpnService.EXTRA_STATUS));
@@ -64,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(IodineClient.ACTION_LOG_MESSAGE);
+        filter.addAction(DnsVpnService.ACTION_LOG_MESSAGE);
         filter.addAction(DnsVpnService.ACTION_STATUS_UPDATE);
         registerReceiver(receiver, filter);
     }

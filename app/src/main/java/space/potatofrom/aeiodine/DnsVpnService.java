@@ -30,9 +30,12 @@ public class DnsVpnService extends VpnService {
 
     public static final String ACTION_STATUS_UPDATE =
             "space.potatofrom.cubic20.DnsVpnService.STATUS_UPDATE";
+    public static final String ACTION_LOG_MESSAGE =
+            "space.potatofrom.cubic20.DnsVpnService.LOG_MESSAGE";
     public static final String ACTION_STOP =
             "space.potatofrom.cubic20.DnsVpnService.STOP";
     public static final String EXTRA_STATUS = "extra_status";
+    public static final String EXTRA_MESSAGE = "extra_message";
 
     private static final String TAG = "DnsVpnService";
     private static final int NOTIFICATION_ID = 1;
@@ -77,6 +80,7 @@ public class DnsVpnService extends VpnService {
         thread = new Thread(new Runnable() {
             @Override
             public void run() {
+                log("Starting...");
                 try {
                     SharedPreferences prefs =
                             PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -94,20 +98,24 @@ public class DnsVpnService extends VpnService {
                             200,
                             0);
 
+                    log("Iodine client connect() returned " + returnVal);
+
                     switch (returnVal) {
                         case RETURN_SUCCESS:
-                            Log.d(TAG, "Successful iodine connection");
+                            log("Successful iodine connection");
                             startTunnel();
                             break;
                         case RETURN_UNABLE_TO_OPEN_DNS_SOCKET:
+                            log("Could not open iodine DNS socket");
                             stop();
-                            throw new SocketException("Could not open iodine dns socket");
+                            break;
                         case RETURN_HANDSHAKE_FAILED:
+                            log("Failed handshake with iodine server");
                             stop();
-                            throw new ConnectException("Failed handshake with iodine server");
+                            break;
                         default:
+                            log("Unknown return value??");
                             stop();
-                            throw new UnknownError("??? " + returnVal);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -120,6 +128,8 @@ public class DnsVpnService extends VpnService {
     }
 
     private void stop() {
+        log("Stopping from status " + status);
+
         if (    status == DnsVpnStatus.STARTED ||
                 status == DnsVpnStatus.CONNECTED) {
             thread.interrupt();
@@ -140,6 +150,10 @@ public class DnsVpnService extends VpnService {
         }
     }
 
+    private void log(String text) {
+        sendBroadcast(new Intent(ACTION_LOG_MESSAGE).putExtra(EXTRA_MESSAGE, text + "\n"));
+    }
+
     private void changeStatus(DnsVpnStatus status) {
         DnsVpnService.status = status;
         sendBroadcast(new Intent(ACTION_STATUS_UPDATE).putExtra(EXTRA_STATUS, status));
@@ -152,7 +166,7 @@ public class DnsVpnService extends VpnService {
         String hostIp = IodineClient.getIp();
         int netBits = IodineClient.getNetbits();
         int mtu = IodineClient.getMtu();
-        Log.d(TAG, "Build tunnel for configuration: hostIp=" + hostIp + " netbits=" + netBits + " mtu=" + mtu);
+        log("Build tunnel for configuration: hostIp=" + hostIp + " netbits=" + netBits + " mtu=" + mtu);
 
         String[] hostIpBytesString = hostIp.split("\\.");
         if (hostIpBytesString.length != 4) {
@@ -193,6 +207,7 @@ public class DnsVpnService extends VpnService {
         if (status != DnsVpnStatus.STOPPED) {
             // Only stop again if not stopped (it might be stopped already if
             // the user manually disconnects)
+            log("Stopped without manual disconnect; iodine crashed?");
             stop();
         }
     }
