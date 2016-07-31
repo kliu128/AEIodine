@@ -12,12 +12,9 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
-import android.util.Log;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 
 public class DnsVpnService extends VpnService {
@@ -163,35 +160,34 @@ public class DnsVpnService extends VpnService {
         VpnService.Builder builder = new VpnService.Builder();
         builder.setSession(TAG);
 
-        String hostIp = IodineClient.getIp();
+        String clientIp = IodineClient.getIp();
         int netBits = IodineClient.getNetbits();
         int mtu = IodineClient.getMtu();
-        log("Build tunnel for configuration: hostIp=" + hostIp + " netbits=" + netBits + " mtu=" + mtu);
+        log("Build tunnel for configuration: clientIp=" + clientIp + " netbits=" + netBits + " mtu=" + mtu);
 
-        String[] hostIpBytesString = hostIp.split("\\.");
+        String[] hostIpBytesString = clientIp.split("\\.");
         if (hostIpBytesString.length != 4) {
-            throw new InvalidServerIpException("Server sent invalid IP");
+            throw new InvalidClientIpException("Server sent invalid IP");
         }
-        byte[] hostIpBytes = new byte[4];
+        byte[] clientIpBytes = new byte[4];
         for (int i = 0; i < 4; i++) {
             try {
                 int integer = Integer.parseInt(hostIpBytesString[i]);
-                hostIpBytes[i] = (byte) (integer);
+                clientIpBytes[i] = (byte) (integer);
             } catch (NumberFormatException e) {
-                throw new InvalidServerIpException("Server sent invalid IP", e);
+                throw new InvalidClientIpException("Server sent invalid IP", e);
             }
         }
 
-        InetAddress hostAddress;
+        InetAddress clientAddress;
         try {
-            hostAddress = InetAddress.getByAddress(hostIpBytes);
+            clientAddress = InetAddress.getByAddress(clientIpBytes);
         } catch (UnknownHostException e) {
-            throw new InvalidServerIpException("Server sent invalid IP", e);
+            throw new InvalidClientIpException("Server sent invalid IP", e);
         }
 
-        builder.addDnsServer("8.8.8.8");
-        builder.addDnsServer("8.8.4.4");
-        builder.addAddress(hostAddress, netBits);
+        builder.addDnsServer(IodineClient.getPropertyNetDns1());
+        builder.addAddress(clientAddress, netBits);
         builder.addRoute("0.0.0.0", 0);
         builder.setMtu(mtu);
 
