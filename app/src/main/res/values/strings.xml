@@ -3,9 +3,9 @@
     <string name="main_connect">Connect</string>
     <string name="main_disconnect">Disconnect</string>
 
-    <string name="main_status_stopped">Stopped</string>
-    <string name="main_status_started">Started</string>
-    <string name="main_status_connected">Connected</string>
+    <string name="main_status_stopped">Currently: stopped</string>
+    <string name="main_status_started">Currently: started</string>
+    <string name="main_status_connected">Currently: connected</string>
 
     <string name="log_starting_iodine">Starting iodine…</string>
 
