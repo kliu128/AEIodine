@@ -42,9 +42,11 @@
     </ScrollView>
 
     <TextView
+        android:gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/main_status_stopped"
+        android:textAllCaps="true"
         android:id="@+id/status"
         android:layout_alignTop="@+id/disconnect"
         android:layout_alignParentEnd="true"
