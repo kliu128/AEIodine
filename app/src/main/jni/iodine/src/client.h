@@ -19,6 +19,7 @@
 #define __CLIENT_H__
 
 #include "window.h"
+#include "common.h"
 
 extern int debug;
 extern int stats;
