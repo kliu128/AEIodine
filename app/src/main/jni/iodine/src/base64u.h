@@ -19,6 +19,9 @@
 #ifndef __BASE64u_H__
 #define __BASE64u_H__
 
+extern struct encoder base64u_encoder;
+extern struct encoder *b64u;
+
 struct encoder *get_base64u_encoder(void);
 
 #endif

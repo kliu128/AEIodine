@@ -42,7 +42,7 @@ static size_t base64u_blksize_enc();
 static size_t base64u_encoded_length(size_t inputlen);
 static size_t base64u_raw_length(size_t inputlen);
 
-static struct encoder base64u_encoder =
+struct encoder base64u_encoder =
 {
 	"Base64u",
 	base64u_encode,
