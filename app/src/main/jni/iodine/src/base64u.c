@@ -55,6 +55,8 @@ struct encoder base64u_encoder =
 	base64u_raw_length
 };
 
+struct encoder *b64u = &base64u_encoder;
+
 struct encoder
 *get_base64u_encoder()
 {

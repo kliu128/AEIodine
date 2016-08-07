@@ -15,12 +15,11 @@
 #include "iodine/src/client.h"
 #include "iodine/src/tun.h"
 #include "iodine/src/common.h"
+#include "iodine/src/base32.h"
 
 #define IODINE_CLIENT_CLASS "space/potatofrom/aeiodine/IodineClient"
 #define IODINE_CLIENT_CLASS_LOG_CALLBACK "log_callback"
 #define IODINE_CLIENT_CLASS_LOG_CALLBACK_SIG "(Ljava/lang/String;)V"
-
-static int dns_fd;
 
 static JavaVM *javaVM = 0;
 
@@ -81,7 +80,7 @@ void android_log_callback(const char *msg_) {
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_getDnsFd(
 		JNIEnv *env, jclass klass) {
-	return dns_fd;
+	return this.dns_fd;
 }
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
@@ -94,35 +93,56 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
     const char *password = (*env)->GetStringUTFChars(env, j_password, JNI_FALSE);
     const char *nameserv_addr_str = (*env)->GetStringUTFChars(env, j_nameserv_addr, JNI_FALSE);
     const char *topdomain = (*env)->GetStringUTFChars(env, j_topdomain, JNI_FALSE);
-    const int windowsize = 8;
-    struct socket *nameserv_addrs = malloc(sizeof(struct socket));
     struct sockaddr_storage nameservaddr_sockaddr;
     int nameservaddr_len = get_addr(nameserv_addr_str, DNS_PORT, AF_UNSPEC, 0, &nameservaddr_sockaddr);
     if (nameservaddr_len < 0) {
         errx(1, "Cannot lookup nameserver '%s': %s ",
              nameserv_addr_str, gai_strerror(nameservaddr_len));
     }
-    nameserv_addrs[0].length = nameservaddr_len;
-    memcpy(&nameserv_addrs[0].addr, &nameservaddr_sockaddr, sizeof(struct sockaddr_storage));
+    this.max_timeout_ms = 5000;
+    this.send_interval_ms = 0;
+    this.server_timeout_ms = 4000;
+    this.downstream_timeout_ms = 2000;
+    this.autodetect_server_timeout = 1;
+    this.dataenc = &base32_encoder;
+    this.autodetect_frag_size = 1;
+    this.max_downstream_frag_size = MAX_FRAGSIZE;
+    this.compression_down = 1;
+    this.compression_up = 1;
+    this.windowsize_up = 8;
+    this.windowsize_down = 8;
+    this.hostname_maxlen = (int)j_request_hostname_size;
+    this.downenc = ' ';
+    this.do_qtype = T_UNSET;
+    this.conn = CONN_DNS_NULL;
+	this.send_ping_soon = 1;
+	this.maxfragsize_up = 100;
+	this.next_downstream_ack = -1;
+	this.num_immediate = 1;
+	this.rtt_total_ms = 200;
+	this.remote_forward_addr.ss_family = AF_UNSPEC;
+    this.lazymode = j_lazy_mode;
+    this.topdomain = (char *) topdomain;
+    strncpy(this.password, password, sizeof(this.password));
+    const char *a[1];
+    a[0] = nameserv_addr_str;
+    this.nameserv_hosts = (char **) a;
+    this.nameserv_hosts_len = 1;
+    this.nameserv_addrs = malloc(sizeof(struct sockaddr_storage) * this.nameserv_hosts_len);
+    memcpy(&this.nameserv_addrs[0], &nameservaddr_sockaddr, sizeof(struct sockaddr_storage));
+    this.nameserv_addrs_len = 1;
 
-    client_init();
-    client_set_compression(1, 1);
-    client_set_dnstimeout(5000, 4000, 2000, 0);
-    client_set_interval(5000, 0);
-    client_set_lazymode(j_lazy_mode);
-    client_set_topdomain(topdomain);
-    client_set_hostname_maxlen((int)j_request_hostname_size);
-    client_set_windowsize(windowsize, windowsize);
-    client_set_password(password);
-    client_set_nameservers(nameserv_addrs, 1);
+    this.rand_seed = (uint16_t) rand();
+    this.chunkid = (uint16_t) rand();
+    this.running = 1;
 
-    if ((dns_fd = open_dns_from_host(NULL, 0, nameservaddr_sockaddr.ss_family, AI_PASSIVE)) < 0) {
+    if ((this.dns_fd = open_dns_from_host(NULL, 0, nameservaddr_sockaddr.ss_family, AI_PASSIVE)) < 0) {
         printf("Could not open DNS socket: %s\n", strerror(errno));
         return 1;
     }
-    if (client_handshake(dns_fd, 0, j_response_fragment_size == 0 ? 1 : 0, j_response_fragment_size)) {
+    if (client_handshake()) {
         printf("Handshake unsuccessful: %s\n", strerror(errno));
-        close(dns_fd);
+        close(this.dns_fd);
         return 2;
     }
 
@@ -138,15 +158,14 @@ JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_connect(
 JNIEXPORT void JNICALL Java_space_potatofrom_aeiodine_IodineClient_tunnelInterrupt(JNIEnv *env,
 		jclass klass) {
 	tun_config_android.request_disconnect = 1;
-	client_stop();
 }
 
 JNIEXPORT jint JNICALL Java_space_potatofrom_aeiodine_IodineClient_tunnel(
         JNIEnv *env, jclass klass, jint tun_fd) {
     printf("Run client_tunnel");
-    int retval = client_tunnel(tun_fd, dns_fd);
+    int retval = client_tunnel();
 
-    close(dns_fd);
+    close(this.dns_fd);
     close(tun_fd);
     return retval;
 }

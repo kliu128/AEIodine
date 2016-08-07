@@ -127,7 +127,7 @@ extern const unsigned char raw_header[RAW_HDR_LEN];
 		fprintf(stderr, __VA_ARGS__);
 
 #define DEBUG(level, ...) \
-		if (INSTANCE.debug >= level) {\
+		//if (INSTANCE.debug >= level) {\
 			fprintf(stderr, "[D%d] ", level); \
 			fprintf(stderr, __VA_ARGS__);\
 			fprintf(stderr, "\n");\
