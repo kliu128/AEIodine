@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private Button connect;
     private Button disconnect;
     private TextView output;
+    private TextView status;
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -53,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
         connect = (Button) findViewById(R.id.connect);
         disconnect = (Button) findViewById(R.id.disconnect);
         output = (TextView) findViewById(R.id.output);
+        status = (TextView) findViewById(R.id.status);
     }
 
     @Override
@@ -113,14 +115,17 @@ public class MainActivity extends AppCompatActivity {
             case STARTED:
                 connect.setEnabled(false);
                 disconnect.setEnabled(false);
+                this.status.setText(R.string.main_status_started);
                 break;
             case CONNECTED:
                 connect.setEnabled(false);
                 disconnect.setEnabled(true);
+                this.status.setText(R.string.main_status_connected);
                 break;
             case STOPPED:
                 connect.setEnabled(true);
                 disconnect.setEnabled(false);
+                this.status.setText(R.string.main_status_stopped);
                 break;
             default:
                 throw new UnsupportedOperationException("Unknown vpn status??");

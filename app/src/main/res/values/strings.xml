@@ -2,6 +2,11 @@
     <string name="app_name">AEIodine</string>
     <string name="main_connect">Connect</string>
     <string name="main_disconnect">Disconnect</string>
+
+    <string name="main_status_stopped">Stopped</string>
+    <string name="main_status_started">Started</string>
+    <string name="main_status_connected">Connected</string>
+
     <string name="log_starting_iodine">Starting iodine…</string>
 
     <string name="dialog_set_settings_message_1">Because this is the first time the app has been launched, you will need to set iodine server and SSH settings.</string>
